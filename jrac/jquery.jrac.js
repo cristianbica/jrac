@@ -17,18 +17,21 @@
       'crop_x': 0,
       'crop_y': 0,
       'crop_resize': true,
+      'crop_drag': true,
       'crop_aspect_ratio': null,
       'image_width': null,
       'image_height': null,
       'zoom_min': 100,
       'zoom_max': 3000,
+      'viewport_resize': true,
       // The two following properties allow to position the content (negative 
       // value allowed). It can be use to focus the viewport on the cropped 
       // part of the image. 
       'viewport_content_left': 0,
       'viewport_content_top': 0,
       // Submit here a callback function (context is the viewport).
-      'viewport_onload': null
+      'viewport_onload': null,
+      'constrain': 'none' //none, fillwidth, fillheight, fillboth
     };
 
     // Apply the resize and crop tools to each images
@@ -94,21 +97,45 @@
         $container.append($zoom_widget);
 
         // Make the viewport resizeable
-        $viewport.resizable({
-          resize: function(event, ui) {
-            $zoom_widget.width(ui.size.width);
-          }
-        });
+        if(settings.viewport_resize) {
+          $viewport.resizable({
+            resize: function(event, ui) {
+              $zoom_widget.width(ui.size.width);
+            }
+          });          
+        }
 
         // Enable the image draggable interaction
         $image.draggable({
+          refreshPositions: true,
           drag: function(event, ui) {
+            if(!$viewport.observator.constrain_fulfilled()) {
+              var ac = $viewport.observator.all_constrains();
+              if(!ac.left) ui.position.left = $crop.position().left;
+              if(!ac.right) ui.position.left = $crop.position().left - ($image.width()-$crop.width()) + 1;
+              if(!ac.top) ui.position.top = $crop.position().top;
+              if(!ac.bottom) ui.position.top = $crop.position().top - ($image.height()-$crop.height()) + 1;
+              $(event.target).css('left', ui.position.left.toString()+'px');
+              $(event.target).css('top', ui.position.top.toString()+'px');
+              return false;
+            };
             if (ui.position.left != ui.originalPosition.left) {
               $viewport.observator.notify('crop_x', $viewport.observator.crop_position_x());
             }
             if (ui.position.top != ui.originalPosition.top) {
               $viewport.observator.notify('crop_y', $viewport.observator.crop_position_y());
             }
+          },
+          stop: function(event, ui) {
+            if(!$viewport.observator.constrain_fulfilled()) {
+              var ac = $viewport.observator.all_constrains();
+              if(!ac.left) ui.position.left = $crop.position().left;
+              if(!ac.right) ui.position.left = $crop.position().left - ($image.width()-$crop.width()) + 1;
+              if(!ac.top) ui.position.top = $crop.position().top;
+              if(!ac.bottom) ui.position.top = $crop.position().top - ($image.height()-$crop.height()) + 1;
+              $(event.target).css('left', ui.position.left.toString()+'px');
+              $(event.target).css('top', ui.position.top.toString()+'px');
+            };
           }
         });
 
@@ -119,18 +146,21 @@
           'height': settings.crop_height,
           'left':settings.crop_x+settings.viewport_content_left,
           'top':settings.crop_y+settings.viewport_content_top
-        }).draggable({
-          containment: $viewport,
-          handle: 'div.jrac_crop_drag_handler',
-          drag: function(event, ui) {
-            if (ui.position.left != ui.originalPosition.left) {
-              $viewport.observator.notify('crop_x', $viewport.observator.crop_position_x());
-            }
-            if (ui.position.top != ui.originalPosition.top) {
-              $viewport.observator.notify('crop_y', $viewport.observator.crop_position_y());
-            }
-          }
         });
+        if(settings.crop_drag) {
+          $crop = draggable({
+            containment: $viewport,
+            handle: 'div.jrac_crop_drag_handler',
+            drag: function(event, ui) {
+              if (ui.position.left != ui.originalPosition.left) {
+                $viewport.observator.notify('crop_x', $viewport.observator.crop_position_x());
+              }
+              if (ui.position.top != ui.originalPosition.top) {
+                $viewport.observator.notify('crop_y', $viewport.observator.crop_position_y());
+              }
+            }
+          });
+        }
         if (settings.crop_resize) {
           $crop.resizable({
             containment: $viewport,
@@ -203,6 +233,26 @@
               return this.crop_position_x()>=0 && this.crop_position_y()>=0
               && this.crop_position_x() + $crop.width()<=$image.width()
               && this.crop_position_y() + $crop.height()<=$image.height();
+            },
+            all_constrains: function() {
+              return {
+                left: $crop.position().left - $image.position().left >= 0,
+                right: this.crop_position_x() + $crop.width() <= $image.width(),
+                top: this.crop_position_y()>=0,
+                bottom: this.crop_position_y() + $crop.height() <= $image.height()
+              };
+            },
+            constrain_fulfilled: function() {
+              if(['fillwidth','fillheight','fillboth'].indexOf(settings.constrain)==-1) return true;
+              var ac = this.all_constrains();
+              console.log(JSON.stringify(ac));
+              console.log($crop);
+              console.log($image);
+              return ({
+                fillwidth: ac.left && ac.right,
+                fillheight: ac.top && ac.bottom,
+                fillboth: ac.left && ac.right && ac.top && ac.bottom
+              })[settings.constrain];
             },
             // Set a property (which his name is one of the event) with a given
             // value then notify this operation

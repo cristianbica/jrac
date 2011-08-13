@@ -28,11 +28,15 @@
       $(document).ready(function(){
         // Apply jrac on some image.
         $('.pane img').jrac({
+          'crop_resize': true,
+          'crop_drag': true,
+          'viewport_resize': true,
           'crop_width': 250,
           'crop_height': 170,
           'crop_x': 100,
           'crop_y': 100,
           'image_width': 400,
+          'constrain': 'none',
           'viewport_onload': function() {
             var $viewport = this;
             var inputs = $viewport.$container.parent('.pane').find('.coords input:text');
@@ -94,11 +98,15 @@ possible to use the coordinates data to be used for any purpose.</p>
 $(document).ready(function(){
   // Apply jrac on some image.
   $('.pane img').jrac({
+    'crop_resize': true,
+    'crop_drag': true,
+    'viewport_resize': true,
     'crop_width': 250,
-    'crop_height': 120,
-    'crop_left': 100,
-    'crop_top': 100,
+    'crop_height': 170,
+    'crop_x': 100,
+    'crop_y': 100,
     'image_width': 400,
+    'constrain': 'none',
     'viewport_onload': function() {
       var $viewport = this;
       var inputs = $viewport.$container.parent('.pane').find('.coords input:text');
@@ -117,8 +125,11 @@ $(document).ready(function(){
           var event_name = event.data;
           $viewport.$image.scale_proportion_locked = $viewport.$container.parent('.pane').find('.coords input:checkbox').is(':checked');
           $viewport.observator.set_property(event_name,$(this).val());
-        })
+        });
       }
+      $viewport.$container.append('<div>Image natual size: '
+        +$viewport.$image.originalWidth+' x '
+        +$viewport.$image.originalHeight+'</div>')
     }
   })
   // React on all viewport events.
